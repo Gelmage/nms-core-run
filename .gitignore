@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+
+# Never commit a save file, or anything decoded out of one.
+*.hg
+save*.json
+snapshots/
