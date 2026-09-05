@@ -18,9 +18,13 @@ Read-only. This never writes to your save.
 """
 import argparse
 import json
+import shutil
+import subprocess
 import sys
 import threading
 import time
+import urllib.error
+import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -32,6 +36,115 @@ import nms_save
 HERE = Path(__file__).resolve().parent
 PAGE = HERE / "index.html"
 DEFAULT_INTERVAL = 120
+
+# A fixed port lets a desktop shortcut notice that the tool is already running and
+# just raise the existing window, instead of leaving a pile of dead servers behind.
+DEFAULT_PORT = 8787
+
+# Chromium-family browsers can open a URL as a plain window with no tabs and no
+# address bar, which is as close to a native application as this needs to get,
+# without adding a single dependency.
+APP_MODE_BROWSERS = [
+    "chromium", "chromium-browser", "google-chrome", "google-chrome-stable",
+    "brave-browser", "microsoft-edge", "vivaldi", "thorium-browser",
+]
+APP_MODE_MACOS = [
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+]
+APP_MODE_WINDOWS = [
+    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+    r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+]
+
+
+def _default_browser_binary():
+    """The user's own default browser, if it is Chromium-family.
+
+    Worth the trouble: opening the window in the browser they already use means it
+    inherits their profile, theme and extensions, instead of launching a second,
+    unfamiliar browser alongside it.
+    """
+    try:
+        out = subprocess.run(["xdg-settings", "get", "default-web-browser"],
+                             capture_output=True, text=True, timeout=3)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    entry = out.stdout.strip()
+    if not entry.endswith(".desktop"):
+        return None
+
+    for base in (Path.home() / ".local/share/applications",
+                 Path("/usr/share/applications"),
+                 Path("/var/lib/flatpak/exports/share/applications")):
+        path = base / entry
+        if not path.is_file():
+            continue
+        try:
+            for line in path.read_text(errors="replace").splitlines():
+                if not line.startswith("Exec="):
+                    continue
+                # Exec lines carry placeholders like %U; the binary is the first word.
+                cmd = line[5:].split()[0].strip('"')
+                name = Path(cmd).name
+                if any(b in name for b in
+                       ("chrome", "chromium", "brave", "edge", "vivaldi")):
+                    return shutil.which(cmd) or (cmd if Path(cmd).is_file() else None)
+                return None      # a default browser, but not one with --app
+        except (OSError, IndexError):
+            return None
+    return None
+
+
+def _app_mode_browser():
+    """A Chromium-family browser that can open a chrome-less window, if there is one."""
+    preferred = _default_browser_binary()
+    if preferred:
+        return preferred
+    for name in APP_MODE_BROWSERS:
+        found = shutil.which(name)
+        if found:
+            return found
+    for path in APP_MODE_MACOS + APP_MODE_WINDOWS:
+        if Path(path).is_file():
+            return path
+    return None
+
+
+def open_window(url, prefer_app):
+    """Open the page, as an app window when asked for and possible."""
+    if prefer_app:
+        browser = _app_mode_browser()
+        if browser:
+            try:
+                subprocess.Popen(
+                    [browser, f"--app={url}", "--window-size=1180,900"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    start_new_session=True)
+                return "app window"
+            except OSError:
+                pass       # fall through to an ordinary tab
+    webbrowser.open(url)
+    return "browser tab"
+
+
+def already_running(port):
+    """True if our own server is already answering on this port.
+
+    Checked before binding so a second launch raises the existing window rather
+    than failing on an address clash -- or worse, silently serving a stale copy.
+    """
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/data.json",
+                                    timeout=1.5) as r:
+            json.loads(r.read().decode("utf-8"))
+            return True
+    except (urllib.error.URLError, OSError, ValueError):
+        return False
 
 
 class SaveReader:
@@ -107,8 +220,11 @@ def main():
         description="Rank No Man's Sky teleporter destinations by distance to the "
                     "galactic core.")
     p.add_argument("--save", help="path to a save.hg file, or the folder holding it")
-    p.add_argument("--port", type=int, default=0,
-                   help="port to serve on (default: pick a free one)")
+    p.add_argument("--port", type=int, default=DEFAULT_PORT,
+                   help=f"port to serve on (default: {DEFAULT_PORT})")
+    p.add_argument("--app", action="store_true",
+                   help="open as a plain window with no tabs or address bar, "
+                        "if a Chromium-family browser is installed")
     p.add_argument("--interval", type=int, default=DEFAULT_INTERVAL,
                    help=f"seconds between save checks (default: {DEFAULT_INTERVAL})")
     p.add_argument("--no-browser", action="store_true",
@@ -133,6 +249,15 @@ def main():
             print(f"  {when}   {s}")
         return 0
 
+    # Launched twice -- a second double-click of a desktop shortcut, say -- just
+    # show the window that already exists.
+    if args.port and already_running(args.port):
+        url = f"http://127.0.0.1:{args.port}/"
+        print(f"Already running at {url} -- opening that instead of starting again.")
+        if not args.no_browser:
+            open_window(url, args.app)
+        return 0
+
     reader = SaveReader(args.save)
     data, error = reader.current()
     if error and data is None:
@@ -147,7 +272,11 @@ def main():
 
     Handler.reader = reader
     Handler.interval = max(10, args.interval)
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    try:
+        server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    except OSError:
+        # Something else holds the port. Take any free one rather than refusing.
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     url = f"http://127.0.0.1:{server.server_port}/"
 
     print(f"\nServing at {url}")
@@ -155,7 +284,7 @@ def main():
     print("Press Ctrl+C to stop.")
 
     if not args.no_browser:
-        threading.Timer(0.4, lambda: webbrowser.open(url)).start()
+        threading.Timer(0.4, lambda: open_window(url, args.app)).start()
 
     try:
         server.serve_forever()

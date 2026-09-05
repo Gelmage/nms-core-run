@@ -678,10 +678,11 @@ try{
       localStorage.removeItem("nms-core-run");
       say("Your cached load was older than this page's snapshot, so it was discarded.");
     }
-  } else say(DEFAULT.auto
+  } else say(DEFAULT.here
       ?"Read straight from your save when this window opened. Nothing to click."
-      :"Showing the snapshot baked into this page. Drop your save.hg for live numbers.");
-}catch(e){ say("Showing the snapshot baked into this page. Drop your save.hg for live numbers."); }
+      :"Drop your save.hg on the box above, or start this with core_run.py to have "+
+       "it found and kept up to date for you.");
+}catch(e){ say("Drop your save.hg on the box above to get started."); }
 render();
 banner(false);
 </script>

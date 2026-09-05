@@ -36,6 +36,7 @@ keeps it up to date while you play.
 
 | Option | What it does |
 | --- | --- |
+| `--app` | Open as a plain window with no tabs or address bar |
 | `--save PATH` | Read a specific save file or folder instead of searching |
 | `--list` | List every save found on this machine, then exit |
 | `--interval N` | Seconds between checks for a newer save (default 120) |
@@ -54,6 +55,21 @@ page has your new position by the time you have walked to the teleporter.**
 
 The page re-checks on a timer and there is a **Check for a new save** button for
 when you do not want to wait for it.
+
+## Window mode
+
+```
+python3 core_run.py --app
+```
+
+opens the page as a plain window with no tabs and no address bar, using a
+Chromium-family browser if one is installed -- your default browser is preferred,
+so the window inherits the profile and theme you already use. Without one it
+falls back to an ordinary tab. This adds no dependencies: it is the browser you
+already have, without the browser furniture.
+
+Launching a second time does not start a second copy. It notices the one already
+running and opens that window instead.
 
 ## Finding your save
 
