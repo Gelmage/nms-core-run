@@ -40,7 +40,7 @@ keeps it up to date while you play.
 | `--save PATH` | Read a specific save file or folder instead of searching |
 | `--list` | List every save found on this machine, then exit |
 | `--interval N` | Seconds between checks for a newer save (default 120) |
-| `--port N` | Serve on a specific port instead of picking a free one |
+| `--port N` | Serve on a specific port (default 8787) |
 | `--no-browser` | Do not open a browser window |
 
 ## How current the numbers are
