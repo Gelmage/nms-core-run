@@ -23,6 +23,7 @@
   --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 28px rgba(0,0,0,.35);
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--ground);color:var(--ink);
   font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:15px;line-height:1.55;
   -webkit-font-smoothing:antialiased}
@@ -54,10 +55,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--core);outline-o
 .pick{background:var(--core);color:#fff;border-color:var(--core);font-weight:600;
   padding:12px 20px;font-size:12.5px}
 .pick:hover{color:#fff;filter:brightness(1.07)}
-.actions{display:flex;flex-direction:column;gap:8px;align-items:stretch}
-.pathrow code b{color:var(--ink);font-weight:600}
-.poll{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-3);
-  letter-spacing:.06em;text-align:center}
+.poll{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink-3);
+  letter-spacing:.04em;text-align:right}
 .status{font-family:"IBM Plex Mono",monospace;font-size:12px;padding:9px 12px;border-radius:3px;
   border:1px solid var(--line);background:var(--panel-2);color:var(--ink-2)}
 .status.err{color:var(--out);border-color:var(--out)}
@@ -72,6 +71,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--core);outline-o
 .stale small{display:block;margin-top:3px;color:var(--ink-2);font-size:11.5px;
   font-family:"IBM Plex Mono",monospace}
 .stale[hidden]{display:none}
+.stale .act{margin-left:auto;display:flex;flex-direction:column;gap:5px;
+  align-items:flex-end;flex:0 0 auto}
+.stale .act button{white-space:nowrap}
+.stale .act button[hidden]{display:none}
 .fresh{border-color:var(--in);background:color-mix(in srgb, var(--in) 8%, var(--panel-2))}
 .fresh b{color:var(--in)}
 .empty.win{color:var(--in);font-size:15px;line-height:1.6}
@@ -160,25 +163,21 @@ code{font-family:"IBM Plex Mono",monospace;font-size:12px}
 <header>
   <div class="eyebrow">No Man's Sky · teleporter planner</div>
   <h1>Every teleport you can take,<br>ranked by <em>how close it gets you</em></h1>
-  <p class="standfirst">The game won't tell you whether a station sits nearer the core than the one you're standing in. Drop your save file below and this will.</p>
+  <p class="standfirst" id="standfirst">The game won't tell you whether a station sits nearer the core than the one you're standing in. Drop your save file below and this will.</p>
 </header>
 
 <div class="loader" id="drop">
   <div class="txt">
     <h2>Load your save</h2>
-    <p>Drag <code>save.hg</code> onto this box, or click the button. It's read in your browser and never uploaded — this page can't reach the network.</p>
-    <div class="pathrow">
-      <code id="path">Started with <b>core_run.py</b>? Your save was found automatically and there is nothing to do here.</code>
-    </div>
+    <p>Drag <code>save.hg</code> onto this box, or click the button. It is read in your browser and never uploaded.</p>
   </div>
-  <div class="actions">
-    <button class="pick" id="refresh" type="button" hidden>Check for a new save</button>
-    <button id="pick" type="button">Choose save.hg</button>
+  <div>
+    <button class="pick" id="pick" type="button">Choose save.hg</button>
     <input type="file" id="file" accept=".hg" hidden>
   </div>
 </div>
 <div class="status" id="status" hidden></div>
-<div class="stale" id="stale" hidden><div class="ico" id="staleico">⚠</div><div class="txt" id="staletxt"></div></div>
+<div class="stale" id="stale" hidden><div class="ico" id="staleico">⚠</div><div class="txt" id="staletxt"></div><div class="act"><button id="refresh" type="button" hidden>Check now</button><div class="poll" id="pollnote"></div></div></div>
 
 <div class="verdict">
   <div class="vcell">
@@ -550,7 +549,8 @@ function accept(file){
     p.file=file.name;
     P=p; mode="in"; setMode("in"); render(); banner(true);
     if(timer){ clearInterval(timer); timer=null; live=false;
-      pollNote("Auto-checking paused — showing the file you loaded. Reload the page to resume."); }
+      $("#refresh").hidden=true;
+      pollNote("Auto-checking paused — showing the file you loaded. Reload to resume."); }
     say(`Loaded ${file.name} — ${p.eps.length} destinations, you're at ${fmt(p.here.distance_ly)} ly.`,"ok");
     try{localStorage.setItem("nms-core-run",JSON.stringify(p));}catch(e){}
   }).catch(err=>{
@@ -577,15 +577,7 @@ drop.addEventListener("drop",e=>{
    that remains. The same file works both ways. */
 pollMs=120000; timer=null; lastSaveMs=null;
 
-function pollNote(text){
-  let el=$("#pollnote");
-  if(!el){
-    el=document.createElement("div");
-    el.id="pollnote"; el.className="poll";
-    $("#refresh").after(el);
-  }
-  el.textContent=text;
-}
+function pollNote(text){ $("#pollnote").textContent=text; }
 function applyServerData(d,announce){
   if(!d) return;
   const changed = d.saveMs !== lastSaveMs;
@@ -609,14 +601,28 @@ async function checkNow(manual){
     const first = !live;
     live=true;
     btn.hidden=false;
+    $("#drop").hidden=true;      // nothing to load by hand; the server does it
+    $("#standfirst").textContent="The game won't tell you whether a station sits "+
+      "nearer the core than the one you're standing in. This does, and it follows "+
+      "along as you play.";
     applyServerData(j.data, first?"first":manual===true);
     if(j.error) say(j.error,"err");
+    else if(first) say(`Reading ${j.data.file} directly — this page keeps itself up to date.`,"ok");
     pollNote(`Checking every ${Math.round(pollMs/1000)}s · last checked ${
       new Date().toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",second:"2-digit"})}`);
     if(!timer) timer=setInterval(()=>checkNow(false),pollMs);
     return true;
   }catch(e){
-    if(manual===true) say("Could not reach the local server. Is core_run.py still running?","err");
+    if(live){
+      live=false;
+      if(timer){ clearInterval(timer); timer=null; }
+      $("#drop").hidden=false; $("#refresh").hidden=true;
+      pollNote("");
+      say("Lost contact with the local server. The numbers below are the last it "+
+          "sent. Restart the shortcut, or drop a save file here.","err");
+    } else if(manual===true){
+      say("Could not reach the local server. Is it still running?","err");
+    }
     return false;
   }finally{
     if(manual===true){ btn.disabled=false; btn.textContent="Check for a new save"; }
