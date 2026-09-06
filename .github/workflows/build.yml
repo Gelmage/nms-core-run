@@ -14,6 +14,11 @@ on:
 
 permissions:
   contents: write
+  # Lets the build publish signed provenance saying these binaries came from
+  # this workflow, on this commit. Not a substitute for code signing, but it is
+  # verifiable and it is free.
+  id-token: write
+  attestations: write
 
 jobs:
   build:
@@ -36,14 +41,12 @@ jobs:
             artifact: run-to-core-windows
             binary: run-to-core.exe
             separator: ";"
+          # Apple silicon only, and deliberately so: No Man's Sky's Mac release
+          # requires an M-series chip, so an Intel build would have no game to
+          # read a save from. GitHub has also retired its Intel Mac runners.
           - os: macos-latest
             label: macOS (Apple silicon)
             artifact: run-to-core-macos-arm64
-            binary: run-to-core
-            separator: ":"
-          - os: macos-13
-            label: macOS (Intel)
-            artifact: run-to-core-macos-intel
             binary: run-to-core
             separator: ":"
 
@@ -95,10 +98,27 @@ jobs:
             zip -r "../${{ matrix.artifact }}.zip" ./*
           fi
 
+      - name: Checksum
+        shell: bash
+        run: |
+          if command -v sha256sum >/dev/null; then
+            sha256sum "${{ matrix.artifact }}.zip" > "${{ matrix.artifact }}.zip.sha256"
+          else
+            shasum -a 256 "${{ matrix.artifact }}.zip" > "${{ matrix.artifact }}.zip.sha256"
+          fi
+          cat "${{ matrix.artifact }}.zip.sha256"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ matrix.artifact }}.zip
+
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: ${{ matrix.artifact }}.zip
+          path: |
+            ${{ matrix.artifact }}.zip
+            ${{ matrix.artifact }}.zip.sha256
 
   release:
     name: Publish release
@@ -123,9 +143,15 @@ jobs:
             | Windows | `run-to-core-windows.zip` |
             | Steam Deck and Linux | `run-to-core-linux.zip` |
             | Mac (Apple silicon) | `run-to-core-macos-arm64.zip` |
-            | Mac (Intel) | `run-to-core-macos-intel.zip` |
 
             These executables are not code-signed, so Windows SmartScreen and
             macOS Gatekeeper will warn about an unknown developer. The README
             explains how to get past that, and the full source is in this
             repository if you would rather run it with Python directly.
+
+            Each download has a `.sha256` file next to it, and every binary
+            carries build provenance you can verify against this repository:
+
+            ```
+            gh attestation verify run-to-core-windows.zip --repo Gelmage/nms-core-run
+            ```

@@ -34,7 +34,6 @@ Nothing to install -- these are single files with Python built in.
 | Windows | `run-to-core-windows.zip` |
 | Steam Deck and Linux | `run-to-core-linux.zip` |
 | Mac (Apple silicon) | `run-to-core-macos-arm64.zip` |
-| Mac (Intel) | `run-to-core-macos-intel.zip` |
 
 A small console window stays open while the tool runs. That window *is* the
 program -- close it when you are done and the tool stops.
@@ -52,6 +51,14 @@ year than a free tool warrants. Your system will say so:
 If you would rather not run an unsigned binary -- a reasonable position -- run it
 from source instead. It is a few hundred lines of readable Python and the
 instructions are below.
+
+Every release carries a `.sha256` checksum, and each binary has build provenance
+you can check, which proves it was built by this repository's own workflow from
+the source you can read here:
+
+```
+gh attestation verify run-to-core-windows.zip --repo Gelmage/nms-core-run
+```
 
 ### Steam Deck
 
