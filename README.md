@@ -118,7 +118,9 @@ it, this project gives you three ways to verify it yourself:
   can confirm your download is byte-for-byte what was published.
 - **Check where the binary came from.** Each release is built by a public GitHub
   Actions workflow and carries signed provenance tying it to a specific commit
-  in this repository. With the [GitHub CLI](https://cli.github.com/) installed:
+  in this repository. With the [GitHub CLI](https://cli.github.com/) installed
+  (version 2.49 or newer -- the version packaged by some Linux distributions is
+  older than that and has no `attestation` command):
 
 ```
 gh attestation verify run-to-core-windows.zip --repo Gelmage/nms-core-run
