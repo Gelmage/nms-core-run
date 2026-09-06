@@ -235,9 +235,9 @@ code{font-family:"IBM Plex Mono",monospace;font-size:12px}
 
 <section class="notes">
   <div class="note"><h3>Nothing is written, ever</h3>
-    <p>The browser opens your save read-only to copy its bytes. It cannot alter, move or lock the file. Load it with the game closed so you're reading a finished save rather than one mid-write.</p></div>
-  <div class="note"><h3>Reload after every jump</h3>
-    <p>The numbers are a snapshot of wherever you were when that save was written. After a black hole or core jump, save, quit, and drop the file again.</p></div>
+    <p>Your save is only ever read. Nothing here opens one for writing, so it cannot be altered, moved or locked, and nothing is uploaded anywhere. It is safe to read while the game is running.</p></div>
+  <div class="note"><h3 id="note2h">Load a save after every jump</h3>
+    <p id="note2p">The numbers show wherever you were when that save was written. After a black hole or core jump, save in game and load the file again.</p></div>
   <div class="note"><h3>How the distance is found</h3>
     <p>Each endpoint stores voxel coordinates; distance to the core is <code>√(x²+y²+z²) × 400</code> light years. Destinations in a galaxy you've left are kept but greyed — the teleporter won't offer them.</p></div>
 </section>
@@ -605,6 +605,10 @@ async function checkNow(manual){
     $("#standfirst").textContent="The game won't tell you whether a station sits "+
       "nearer the core than the one you're standing in. This does, and it follows "+
       "along as you play.";
+    $("#note2h").textContent="It keeps up with you";
+    $("#note2p").textContent="The numbers show wherever you were when the game last "+
+      "wrote a save, which it does when you dock, land or leave a ship. This re-reads "+
+      "that file on a timer, so a jump shows up here shortly after it happens.";
     applyServerData(j.data, first?"first":manual===true);
     if(j.error) say(j.error,"err");
     else if(first) say(`Reading ${j.data.file} directly — this page keeps itself up to date.`,"ok");

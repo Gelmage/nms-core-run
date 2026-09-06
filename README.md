@@ -9,7 +9,11 @@ list of names with no indication of which way any of them takes you. If you are
 running for the core, that matters: a jump can quietly put you further out than
 you have already been, and you will not find out until you arrive.
 
-![screenshot](screenshots/main.png)
+![The verdict panel: where you are, the best teleport available, and the gain](screenshots/main.png)
+
+Every destination ranked, with the ones that move you inward marked in green:
+
+![The full destination table](screenshots/destinations.png)
 
 ## What it tells you
 
