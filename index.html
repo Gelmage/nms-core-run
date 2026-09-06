@@ -394,16 +394,27 @@ function view(){
     return (x-y)*sortDir||a.d-b.d;
   });
 }
-function hereName(){
+function atHere(){
   const h=P.here;
-  if(!h) return null;
-  const at=P.eps.filter(r=>r.g===h.galaxy&&r.s===h.system_index&&
-                           r.v[0]===h.x&&r.v[1]===h.y&&r.v[2]===h.z);
-  // A station is named after its system, so it identifies where you are. A freighter
-  // parks wherever you happen to be, so it never does.
-  const rank={Spacestation:0,Settlement:1,Base:2,ExternalBase:3};
-  const named=at.filter(r=>r.k in rank).sort((a,b)=>rank[a.k]-rank[b.k])[0];
-  return named||null;
+  if(!h) return [];
+  return P.eps.filter(r=>r.g===h.galaxy&&r.s===h.system_index&&
+                         r.v[0]===h.x&&r.v[1]===h.y&&r.v[2]===h.z);
+}
+function hereName(){
+  const at=atHere();
+  // A station's name is the system's name plus a designation, so it tells you where you
+  // are. Nothing else does: a base carries whatever its owner typed, a settlement has a
+  // name of its own, and a freighter follows you from system to system. Those are still
+  // worth showing, but they get labelled for what they are rather than passed off as
+  // the name of the system.
+  const station=at.find(r=>r.k==="Spacestation");
+  if(station) return {r:station, label:"space station", exact:true};
+  const other=at.find(r=>r.k!=="Freighter");
+  if(other) return {r:other, label:"your "+other.k.replace("ExternalBase","base")
+                                              .replace("Base","base")
+                                              .replace("Settlement","settlement"),
+                    exact:false};
+  return null;
 }
 function renderTop(){
   const h=P.here;
@@ -418,23 +429,30 @@ function renderTop(){
   const spot=hereName();
   const coords=`${h.galaxy_name} · voxel ${h.x}, ${h.y}, ${h.z} · system ${h.system_index}`;
   $("#hn").innerHTML=spot
-    ? "<strong>"+esc(spot.n)+"</strong><span class=\"sub\">"+esc(coords)+"</span>"
+    ? "<strong>"+esc(spot.r.n)+"</strong><span class=\"sub\">"+
+      esc(spot.label)+" · "+esc(coords)+"</span>"
     : "<span class=\"sub\">"+esc(coords)+
-      "<br>No station or base of yours here, so this system has no name in the save.</span>";
+      "<br>Nothing of yours in this system, so the save holds no name for it.</span>";
   const reach=P.eps.filter(r=>r.g===h.galaxy);
-  const best=reach.length?reach[0]:null;
+  const here=new Set(atHere());
+  const elsewhere=reach.filter(r=>!here.has(r));
+  const best=elsewhere.length?elsewhere[0]:null;
   if(best){
     const gap=h.distance_ly-best.d;
     $("#bd").innerHTML=fmt(best.d)+'<small>ly</small>';
     $("#bn").innerHTML="<strong>"+esc(best.n)+"</strong> · "+esc(best.k.toLowerCase())+
-      (gap>0?"":gap===0?" · that's your own system":" · still further out than you");
+      (gap>0?"":" · still further out than you");
     const g=$("#gain");
-    g.textContent=gap>0?"−"+fmt(gap)+" ly":gap===0?"0 ly":"+"+fmt(-gap)+" ly";
-    g.style.color=gap>0?"var(--in)":gap===0?"var(--ink-2)":"var(--out)";
+    g.textContent=gap>0?"−"+fmt(gap)+" ly":"+"+fmt(-gap)+" ly";
+    g.style.color=gap>0?"var(--in)":"var(--out)";
     $(".vcell.mid .vk").textContent=gap>0?"net gain":"no gain available";
   } else {
-    $("#bd").textContent="—"; $("#bn").textContent="no destinations in this galaxy";
+    $("#bd").textContent="—";
+    $("#bn").textContent=reach.length
+      ?"nowhere to go but where you already are"
+      :"no destinations in this galaxy";
     $("#gain").textContent="—";
+    $(".vcell.mid .vk").textContent="net gain";
   }
   const closer=reach.filter(r=>r.d<h.distance_ly).length;
   $("#railtext").innerHTML=reach.length
