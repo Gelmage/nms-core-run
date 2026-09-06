@@ -26,8 +26,9 @@ Every destination ranked, with the ones that move you inward marked in green:
 
 ## Download and run
 
-**[Get the latest release](../../releases/latest)**, unzip it, and run it.
-Nothing to install -- these are single files with Python built in.
+**[Get the latest release](../../releases/latest)** and pick the file for your
+system. Each one is a single executable with Python built in, so there is
+nothing to install.
 
 | System | File |
 | --- | --- |
@@ -35,39 +36,105 @@ Nothing to install -- these are single files with Python built in.
 | Steam Deck and Linux | `run-to-core-linux.zip` |
 | Mac (Apple silicon) | `run-to-core-macos-arm64.zip` |
 
-A small console window stays open while the tool runs. That window *is* the
-program -- close it when you are done and the tool stops.
+A small console window stays open the whole time the tool is running. That
+window is the program: closing it stops the tool and shuts down the local page.
 
-### The unknown-developer warning
+### Windows
 
-These builds are not code-signed, because a signing certificate costs more per
-year than a free tool warrants. Your system will say so:
+1. Download `run-to-core-windows.zip` and extract it. Right-click the zip,
+   choose **Extract All**, and pick any folder you like.
+2. Run `run-to-core.exe`.
+3. Windows will show a blue **"Windows protected your PC"** box. See
+   [About the warnings](#about-the-warnings) below for what this is and how to
+   decide. To continue, click **More info**, then **Run anyway**.
+4. A console window opens and your browser shows the page. Leave the console
+   window open while you play.
 
-- **Windows:** SmartScreen shows "Windows protected your PC". Click **More
-  info**, then **Run anyway**.
-- **macOS:** right-click the file and choose **Open**, then **Open** again.
-  Double-clicking alone will be refused the first time.
+If you would rather not click past a security warning, the
+[Running from source](#running-from-source) section needs no executable at all.
 
-If you would rather not run an unsigned binary -- a reasonable position -- run it
-from source instead. It is a few hundred lines of readable Python and the
-instructions are below.
+### Steam Deck
 
-Every release carries a `.sha256` checksum, and each binary has build provenance
-you can check, which proves it was built by this repository's own workflow from
-the source you can read here:
+The Deck can run this, but only from Desktop Mode, since Gaming Mode has no file
+manager.
+
+1. Hold the power button and choose **Switch to Desktop**.
+2. Download `run-to-core-linux.zip` and extract it.
+3. Right-click `run-to-core`, choose **Properties**, open the **Permissions**
+   tab, and tick **Is executable**.
+4. Double-click it. SteamOS already has a browser for the page to open in.
+
+To reach it from Gaming Mode later, right-click `run-to-core` while still in
+Desktop Mode and choose **Add to Steam**. It will then appear in your library
+under Non-Steam games.
+
+### macOS
+
+No Man's Sky on Mac requires Apple silicon, so only that build is provided.
+
+1. Download `run-to-core-macos-arm64.zip` and open it.
+2. **Right-click** `run-to-core` and choose **Open**, then confirm **Open** in
+   the dialog. Do not double-click it: macOS refuses unsigned applications
+   opened that way, and gives you no option to continue.
+3. Your browser opens the page. Leave the Terminal window open while you play.
+
+You only need the right-click step the first time.
+
+### Linux
+
+1. Download `run-to-core-linux.zip` and extract it.
+2. Make it executable and run it:
+
+```
+chmod +x run-to-core
+./run-to-core
+```
+
+## About the warnings
+
+Windows and macOS both warn about this download. The warning is accurate, and it
+is worth understanding rather than clicking past on someone's say-so.
+
+**What the warning actually means.** Both systems check whether software carries
+a code-signing certificate identifying its publisher. This project has no such
+certificate, so your computer correctly reports that it cannot tell you who
+wrote it. The message means "unidentified", not "inspected and found harmful" --
+but it equally does not mean "inspected and found safe". Your computer is
+telling you it does not know, which is true.
+
+**Why there is no certificate.** Windows code-signing certificates cost roughly
+200 to 400 US dollars a year and, since 2023, require dedicated hardware to hold
+the key. Apple charges 99 dollars a year. This is a free tool with no income, so
+that expense is not justified. Nothing more interesting than that is going on.
+
+**What you can check instead.** Rather than asking you to take anyone's word for
+it, this project gives you three ways to verify it yourself:
+
+- **Read the source.** The entire tool is in this repository: about a thousand
+  lines of Python and one HTML page. There is no build step and nothing
+  obfuscated. The part that touches your save is `nms_save.py`, and it is worth
+  a look if you are curious -- every file operation on a save is a read.
+- **Check the download matches.** Every release includes a `.sha256` file so you
+  can confirm your download is byte-for-byte what was published.
+- **Check where the binary came from.** Each release is built by a public GitHub
+  Actions workflow and carries signed provenance tying it to a specific commit
+  in this repository. With the [GitHub CLI](https://cli.github.com/) installed:
 
 ```
 gh attestation verify run-to-core-windows.zip --repo Gelmage/nms-core-run
 ```
 
-### Steam Deck
+  That confirms the file you downloaded was produced by this repository's
+  workflow from the source you can read, and not modified afterwards.
 
-Switch to **Desktop Mode**, download the Linux zip, unpack it, then right-click
-`run-to-core` and choose **Properties -> Permissions -> Is executable**, and run
-it. SteamOS already has a browser for the page to open in.
+**Or skip the executable entirely.** Running from source needs no downloaded
+binary and triggers no warnings, because you are running code you can read with
+a Python interpreter you installed yourself. That is the most cautious option,
+and it is a perfectly reasonable one.
 
-To reach it from Gaming Mode, add `run-to-core` to Steam as a non-Steam game
-while you are in Desktop Mode.
+Being wary of unsigned executables is good judgement, and none of the above is
+meant to talk you out of it. Use whichever of these options you are comfortable
+with.
 
 ## Running from source
 
@@ -163,11 +230,12 @@ save it can see, which is usually faster than hunting for it.
 The Microsoft Store and Game Pass versions store saves in a different format and
 are not supported.
 
-## Is this safe for my save?
+## What it does to your save
 
-Yes, and the code is short enough to check yourself.
+Nothing. It only reads. Each of these is checkable in the source rather than
+something you have to take on trust:
 
-- Every file operation on a save is a read. No function anywhere in this project
+- Every file operation on a save is a read, all of them in `nms_save.py`. No function anywhere in this project
   opens a save for writing, and there is no code path that could modify, move or
   delete one.
 - Nothing is uploaded. The server it starts is bound to `127.0.0.1` and is only
@@ -176,7 +244,8 @@ Yes, and the code is short enough to check yourself.
 - Reading a save while the game is running is fine. Worst case you catch a
   half-written file, the read fails, and the page keeps the last good numbers.
 
-Backing up your saves before running unfamiliar tools is a good habit regardless.
+Backing up your saves before running any unfamiliar tool is a good habit
+regardless, and No Man's Sky keeps several rotating save slots of its own.
 
 ## How it works
 
