@@ -437,17 +437,25 @@ function renderTop(){
   const here=new Set(atHere());
   const elsewhere=reach.filter(r=>!here.has(r));
   const best=elsewhere.length?elsewhere[0]:null;
-  if(best){
-    const gap=h.distance_ly-best.d;
+  const gain=best?h.distance_ly-best.d:0;
+  if(best&&gain>0){
+    $("#bk").textContent="Best teleport available";
     $("#bd").innerHTML=fmt(best.d)+'<small>ly</small>';
-    $("#bk").textContent=gap>0?"Best teleport available":"Nearest to the core";
-    $("#bn").innerHTML="<strong>"+esc(best.n)+"</strong> · "+esc(best.k.toLowerCase())+
-      (gap>0?"":" · and it still sets you back. Nothing you have banked in "+
-              esc(h.galaxy_name)+" moves you inward.");
+    $("#bn").innerHTML="<strong>"+esc(best.n)+"</strong> · "+esc(best.k.toLowerCase());
     const g=$("#gain");
-    g.textContent=gap>0?"−"+fmt(gap)+" ly":"+"+fmt(-gap)+" ly";
-    g.style.color=gap>0?"var(--in)":"var(--out)";
-    $(".vcell.mid .vk").textContent=gap>0?"net gain":"no gain available";
+    g.textContent="−"+fmt(gain)+" ly"; g.style.color="var(--in)";
+    $(".vcell.mid .vk").textContent="net gain";
+  } else if(best){
+    // Everything reachable is further out, so the closest point is this one.
+    $("#bk").textContent="Closest you can reach";
+    $("#bd").innerHTML=fmt(h.distance_ly)+'<small>ly</small>';
+    $("#bn").innerHTML=(spot?"<strong>"+esc(spot.r.n)+"</strong> · ":"")+
+      "where you are standing<span class=\"sub\">Nothing you have banked in "+
+      esc(h.galaxy_name)+" is closer to the core. Every teleport from here is a "+
+      "step backwards.</span>";
+    const g=$("#gain");
+    g.textContent="0 ly"; g.style.color="var(--ink-2)";
+    $(".vcell.mid .vk").textContent="already closest";
   } else {
     $("#bd").textContent="—";
     $("#bk").textContent="Best teleport available";
