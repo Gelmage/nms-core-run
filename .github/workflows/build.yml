@@ -132,7 +132,9 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*.zip
+          files: |
+            artifacts/**/*.zip
+            artifacts/**/*.sha256
           generate_release_notes: true
           body: |
             Download the file for your system, unzip it, and run it. Nothing to
