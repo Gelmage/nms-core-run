@@ -1,0 +1,131 @@
+name: Build executables
+
+# Most people who want this tool are not going to install Python to get it.
+# These builds produce a single file they can download and double-click.
+#
+# Push a tag to publish a release:   git tag v1.0.0 && git push origin v1.0.0
+# Or run it by hand from the Actions tab to check the builds still work.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 22.04 rather than latest: the executable is linked against that
+          # runner's glibc, and an older one runs on more machines, the Steam
+          # Deck included.
+          - os: ubuntu-22.04
+            label: Linux and Steam Deck
+            artifact: run-to-core-linux
+            binary: run-to-core
+            separator: ":"
+          - os: windows-latest
+            label: Windows
+            artifact: run-to-core-windows
+            binary: run-to-core.exe
+            separator: ";"
+          - os: macos-latest
+            label: macOS (Apple silicon)
+            artifact: run-to-core-macos-arm64
+            binary: run-to-core
+            separator: ":"
+          - os: macos-13
+            label: macOS (Intel)
+            artifact: run-to-core-macos-intel
+            binary: run-to-core
+            separator: ":"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: Check the source runs before freezing it
+        run: python core_run.py --list || true
+
+      - name: Build
+        run: >
+          pyinstaller --onefile --name run-to-core --console
+          --add-data "index.html${{ matrix.separator }}."
+          core_run.py
+
+      - name: Smoke test the executable
+        shell: bash
+        run: |
+          cd dist
+          # No save exists on a CI runner, so --list is expected to find nothing
+          # and exit 1. What matters is that it starts, finds its bundled page,
+          # and fails for the right reason rather than crashing.
+          output=$(./run-to-core --list 2>&1 || true)
+          echo "$output"
+          case "$output" in
+            *"No No Man's Sky saves found"*)
+              echo "Executable runs and reports cleanly." ;;
+            *)
+              echo "Unexpected output from the built executable."; exit 1 ;;
+          esac
+
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p out
+          cp "dist/${{ matrix.binary }}" out/
+          cp README.md LICENSE out/
+          cd out
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a "../${{ matrix.artifact }}.zip" ./*
+          else
+            zip -r "../${{ matrix.artifact }}.zip" ./*
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}.zip
+
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*.zip
+          generate_release_notes: true
+          body: |
+            Download the file for your system, unzip it, and run it. Nothing to
+            install.
+
+            | System | File |
+            | --- | --- |
+            | Windows | `run-to-core-windows.zip` |
+            | Steam Deck and Linux | `run-to-core-linux.zip` |
+            | Mac (Apple silicon) | `run-to-core-macos-arm64.zip` |
+            | Mac (Intel) | `run-to-core-macos-intel.zip` |
+
+            These executables are not code-signed, so Windows SmartScreen and
+            macOS Gatekeeper will warn about an unknown developer. The README
+            explains how to get past that, and the full source is in this
+            repository if you would rather run it with Python directly.

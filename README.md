@@ -24,12 +24,48 @@ Every destination ranked, with the ones that move you inward marked in green:
 - Destinations stranded in galaxies you have left, greyed out, because the
   teleporter will not offer them
 
-## Requirements
+## Download and run
+
+**[Get the latest release](../../releases/latest)**, unzip it, and run it.
+Nothing to install -- these are single files with Python built in.
+
+| System | File |
+| --- | --- |
+| Windows | `run-to-core-windows.zip` |
+| Steam Deck and Linux | `run-to-core-linux.zip` |
+| Mac (Apple silicon) | `run-to-core-macos-arm64.zip` |
+| Mac (Intel) | `run-to-core-macos-intel.zip` |
+
+A small console window stays open while the tool runs. That window *is* the
+program -- close it when you are done and the tool stops.
+
+### The unknown-developer warning
+
+These builds are not code-signed, because a signing certificate costs more per
+year than a free tool warrants. Your system will say so:
+
+- **Windows:** SmartScreen shows "Windows protected your PC". Click **More
+  info**, then **Run anyway**.
+- **macOS:** right-click the file and choose **Open**, then **Open** again.
+  Double-clicking alone will be refused the first time.
+
+If you would rather not run an unsigned binary -- a reasonable position -- run it
+from source instead. It is a few hundred lines of readable Python and the
+instructions are below.
+
+### Steam Deck
+
+Switch to **Desktop Mode**, download the Linux zip, unpack it, then right-click
+`run-to-core` and choose **Properties -> Permissions -> Is executable**, and run
+it. SteamOS already has a browser for the page to open in.
+
+To reach it from Gaming Mode, add `run-to-core` to Steam as a non-Steam game
+while you are in Desktop Mode.
+
+## Running from source
 
 Python 3.8 or newer. Nothing else -- no pip install, no dependencies. The LZ4
-decompression the save format needs is included.
-
-## Usage
+decompression the save format needs is included in this repository.
 
 ```
 python3 core_run.py
@@ -37,6 +73,10 @@ python3 core_run.py
 
 That is the whole thing. It finds your save, opens a page in your browser, and
 keeps it up to date while you play.
+
+On Windows, `Run To Core (Windows).bat` does the same thing with a double-click,
+and tells you where to get Python if it is missing. `Run To Core (Mac).command`
+and `run-to-core.sh` are the equivalents for macOS and Linux.
 
 | Option | What it does |
 | --- | --- |

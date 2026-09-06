@@ -5,3 +5,8 @@ __pycache__/
 *.hg
 save*.json
 snapshots/
+
+# PyInstaller build output
+build/
+dist/
+*.spec

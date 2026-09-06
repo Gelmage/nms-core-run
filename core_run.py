@@ -33,7 +33,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import nms_save
 
-HERE = Path(__file__).resolve().parent
+# Packaged as a one-file executable, PyInstaller unpacks the bundled data to a
+# temporary directory and points sys._MEIPASS at it. Running from source, the page
+# simply sits next to this file.
+HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 PAGE = HERE / "index.html"
 DEFAULT_INTERVAL = 120
 
