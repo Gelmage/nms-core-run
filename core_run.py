@@ -118,6 +118,15 @@ def _app_mode_browser():
     return None
 
 
+def _fresh(url):
+    """Handed the same URL twice, a browser focuses the window it already has and
+    shows whatever that window last rendered. Launching again after an update
+    would then appear to change nothing. A unique query string makes each launch
+    a distinct URL, so the page is always fetched anew."""
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}t={int(time.time())}"
+
+
 def open_window(url, prefer_app):
     """Open the page, as an app window when asked for and possible."""
     if prefer_app:
@@ -125,13 +134,13 @@ def open_window(url, prefer_app):
         if browser:
             try:
                 subprocess.Popen(
-                    [browser, f"--app={url}", "--window-size=1180,900"],
+                    [browser, f"--app={_fresh(url)}", "--window-size=1180,900"],
                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                     start_new_session=True)
                 return "app window"
             except OSError:
                 pass       # fall through to an ordinary tab
-    webbrowser.open(url)
+    webbrowser.open(_fresh(url))
     return "browser tab"
 
 
