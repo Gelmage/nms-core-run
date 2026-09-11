@@ -279,9 +279,8 @@ Two details worth knowing:
   base of yours sitting in it. Freighters are excluded, since yours follows you
   around and its name says nothing about where you are.
 
-Galaxies are named for the first ten indices, which covers a long run of core
-jumps. Past that they display as `Galaxy 10`, `Galaxy 11` and so on, with
-distances still correct. Guessed names would be worse than none.
+All 256 galaxies are named, in the game's own order. Anything outside that range
+falls back to `Galaxy N`, with the distance still correct.
 
 ## Licence
 
